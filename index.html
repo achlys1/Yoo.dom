@@ -31,12 +31,14 @@
             background-color: var(--bg-color);
             color: var(--text-color);
             overflow: hidden;
+            margin: 0;
         }
 
         .video-container {
             position: absolute;
             width: 100vw;
             height: 100vh;
+            z-index: -1; /* Pushed to the back so it never steals clicks */
         }
 
         .input_video {
@@ -46,7 +48,7 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
-            transform: scaleX(-1); /* Mirror */
+            transform: scaleX(-1); 
             z-index: 0; 
             filter: brightness(0.6) contrast(1.1); 
         }
@@ -59,10 +61,11 @@
             height: 100%;
             object-fit: cover;
             transform: scaleX(-1); 
+            pointer-events: none; /* Crucial: Lets you click "through" the effects */
         }
         
-        #bgCanvas { z-index: 1; pointer-events: none; }
-        #mainCanvas { z-index: 5; pointer-events: none; }
+        #bgCanvas { z-index: 1; }
+        #mainCanvas { z-index: 5; }
 
         #hud {
             position: absolute;
@@ -101,7 +104,7 @@
             bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
-            z-index: 10;
+            z-index: 50;
             display: flex;
             gap: 10px;
             background: var(--glass-bg);
@@ -110,6 +113,7 @@
             border-radius: 30px;
             padding: 8px;
             transition: opacity 0.5s;
+            pointer-events: auto; /* Ensures theme buttons are clickable */
         }
 
         .theme-btn {
@@ -133,7 +137,7 @@
             position: absolute;
             inset: 0;
             background: rgba(0,0,0,0.85);
-            z-index: 100;
+            z-index: 9999; /* Absolute top layer */
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -143,6 +147,9 @@
         }
 
         .start-btn {
+            position: relative;
+            z-index: 10000; /* Higher than overlay */
+            pointer-events: auto; /* Forces clickability */
             padding: 16px 40px;
             font-size: 1.2rem;
             background: linear-gradient(45deg, #ff00cc, #3333ff);
@@ -158,7 +165,7 @@
         }
         .start-btn:hover { transform: scale(1.05); }
 
-        .hidden { opacity: 0; pointer-events: none; }
+        .hidden { opacity: 0 !important; pointer-events: none !important; }
     </style>
 </head>
 <body>
@@ -211,7 +218,7 @@ let lastFpsTime = performance.now();
 let currentHands = []; 
 let handVelocities = 0; 
 
-// New Advanced Feature States
+// Advanced Feature States
 let isTimeFrozen = false;
 let timeFreezeCooldown = 0;
 let energyOrbRadius = 0;
@@ -334,7 +341,7 @@ function detectGestures() {
     currentHands.forEach((hand, idx) => {
         const palm = hand[0];
         const thumb = hand[4];
-        const indexMcp = hand[5]; // Knuckle
+        const indexMcp = hand[5];
         const indexTip = hand[8];
         const midTip = hand[12];
         const ringTip = hand[16];
@@ -402,10 +409,10 @@ function detectGestures() {
     if (currentHands.length === 2 && !isTimeFrozen) {
         const palmDist = getDist(currentHands[0][0], currentHands[1][0]);
         if (palmDist < 0.3) {
-            energyOrbRadius = Math.min(energyOrbRadius + 3, 150); // Grow orb
+            energyOrbRadius = Math.min(energyOrbRadius + 3, 150);
             uiGesture.innerText = "ENERGY ORB!";
         } else {
-            energyOrbRadius = Math.max(energyOrbRadius - 8, 0); // Shrink orb
+            energyOrbRadius = Math.max(energyOrbRadius - 8, 0);
         }
     } else {
         energyOrbRadius = Math.max(energyOrbRadius - 8, 0);
@@ -514,7 +521,6 @@ function renderLoop(timestamp) {
     drawBackground();
 
     ctx.globalCompositeOperation = 'destination-out';
-    // If frozen, do not clear the canvas so trails stick infinitely
     ctx.fillStyle = isTimeFrozen ? 'rgba(0,0,0,0)' : 'rgba(0, 0, 0, 0.2)';
     ctx.fillRect(0, 0, width, height);
 
@@ -522,14 +528,12 @@ function renderLoop(timestamp) {
 
     updatePhysics();
 
-    // Snap Flash Effect
     if (screenFlash > 0) {
         ctx.fillStyle = `rgba(255, 255, 255, ${screenFlash})`;
         ctx.fillRect(0, 0, width, height);
         if (!isTimeFrozen) screenFlash -= 0.05;
     }
 
-    // Laser Beams Update & Render
     for (let i = lasers.length - 1; i >= 0; i--) {
         let l = lasers[i];
         const dx = l.end.x - l.start.x;
@@ -552,7 +556,6 @@ function renderLoop(timestamp) {
         if (l.life <= 0) lasers.splice(i, 1);
     }
 
-    // Energy Orb Render
     if (energyOrbRadius > 0 && currentHands.length === 2) {
         const pt1 = mapToCanvas(currentHands[0][0]);
         const pt2 = mapToCanvas(currentHands[1][0]);
@@ -586,9 +589,4 @@ function renderLoop(timestamp) {
             
             FINGER_TIPS.forEach((tipIndex, idx) => {
                 const pt = mapToCanvas(hand[tipIndex]);
-                const tipCol = themes[currentTheme](time, idx, FINGER_TIPS.length);
-                
-                ctx.beginPath();
-                ctx.arc(pt.x, pt.y, 4, 0, Math.PI * 2);
-                ctx.fillStyle = '#fff';
-      
+                const tipCol = t
