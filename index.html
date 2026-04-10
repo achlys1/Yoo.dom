@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Hand Tracking AR</title>
+    <title>y.r.s</title>
     
-    <!-- MediaPipe Hands CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
@@ -52,9 +51,6 @@
             filter: brightness(0.6) contrast(1.1); /* Subtle dark to make neon pop */
         }
 
-        /* 
-         * Background Canvas captures the video frame and applies the matrix rain/starfield 
-         */
         #bgCanvas, #mainCanvas {
             position: absolute;
             top: 0;
@@ -73,7 +69,6 @@
         #mainCanvas {
             z-index: 5;
             pointer-events: none;
-            /* We use mix-blend-mode for the glowing effects in canvas */
         }
 
         /* UI Overlays */
@@ -178,10 +173,9 @@
 </head>
 <body>
 
-    <!-- Start Overlay (Required for AudioContext initialization) -->
     <div id="startOverlay">
-        <h1 style="margin-bottom: 20px; font-weight: 300; letter-spacing: 4px;">NEON AURA AR</h1>
-        <p style="margin-bottom: 40px; color: #888;">Grant camera permissions and click to start audio/visual experience</p>
+        <h1 style="margin-bottom: 20px; font-weight: 300; letter-spacing: 4px;">y.r.s</h1>
+        <p style="margin-bottom: 40px; color: #888;">Grant camera permissions and click to start</p>
         <button class="start-btn" id="startBtn">Enter Experience</button>
     </div>
 
@@ -191,7 +185,6 @@
         <canvas id="mainCanvas"></canvas>
     </div>
 
-    <!-- UI Overlay -->
     <div id="hud" class="hidden">
         <div class="panel">
             <div class="stat">Hands Detected: <span class="val" id="ui-hands">0</span></div>
@@ -212,8 +205,7 @@
     </div>
 
 <script>
-/** 
- * GLOBALS & CONFIG
+/** * GLOBALS & CONFIG
  */
 const videoElement = document.querySelector('.input_video');
 const bgCanvas = document.getElementById('bgCanvas');
@@ -374,23 +366,21 @@ function getDist(p1, p2) {
     return Math.hypot(p1.x - p2.x, p1.y - p2.y);
 }
 
-// Convert normalized landmark to specific canvas scale (Note: canvas is horizontally flipped)
 function mapToCanvas(point) {
     return { x: point.x * width, y: point.y * height };
 }
 
-let lastPinchState = [false, false]; // Prevents rapid re-triggering
+let lastPinchState = [false, false];
 
 function detectGestures() {
     if (!currentHands.length) return;
     
     currentHands.forEach((hand, idx) => {
-        // Pinch Detection: Thumb (4) and Index (8)
         const thumb = hand[4];
         const index = hand[8];
         const dist = getDist(thumb, index);
         
-        const isPinching = dist < 0.05; // 5% of screen screen distance
+        const isPinching = dist < 0.05;
         
         if (isPinching && !lastPinchState[idx]) {
             const midpoint = {
@@ -404,10 +394,8 @@ function detectGestures() {
         lastPinchState[idx] = isPinching;
     });
 
-    // Spread Percentage roughly estimated by distance from Palm(0) to Index(8) and Pinky(20)
     if (currentHands[0]) {
         const spread = getDist(currentHands[0][8], currentHands[0][20]);
-        // Normalizing spread so max is around 100%
         let spreadPct = Math.min(Math.round(spread * 300), 100);
         uiSpread.innerText = spreadPct + '%';
         if (!lastPinchState.includes(true)) {
@@ -444,23 +432,18 @@ function createShockwave(pos, color) {
     });
 }
 
-// Background Effect Engine
 function drawBackground() {
-    // Use destination-out to fade out the previous frame's drops, leaving a transparent trail
     bgCtx.globalCompositeOperation = 'destination-out';
     bgCtx.fillStyle = `rgba(0, 0, 0, ${0.15 + Math.min(handVelocities*10, 0.5)})`;
     bgCtx.fillRect(0, 0, width, height);
     bgCtx.globalCompositeOperation = 'source-over';
 
-    // Matrix Rain Effect mapping to hand speed
     bgCtx.fillStyle = themes[currentTheme](time, 1, 1);
     bgCtx.font = fontSize + "px monospace";
     
-    // Matrix speed boosts when hands move fast
     let speedMult = 1 + (handVelocities * 100);
 
     for (let i = 0; i < matrixColumns.length; i++) {
-        // Only draw randomly to keep it sparse like stars/rain
         if (Math.random() > 0.95) {
             const char = String.fromCharCode(0x30A0 + Math.random() * 96);
             bgCtx.fillText(char, i * fontSize, matrixColumns[i] * fontSize);
@@ -475,13 +458,12 @@ function drawBackground() {
 }
 
 function updatePhysics() {
-    // Particles
     for (let i = particles.length - 1; i >= 0; i--) {
         let p = particles[i];
         p.x += p.vx;
         p.y += p.vy;
-        p.life -= 0.02;     // Fade out
-        p.vy += 0.1;        // Gravity
+        p.life -= 0.02;
+        p.vy += 0.1;
         
         if (p.life <= 0) {
             particles.splice(i, 1);
@@ -494,10 +476,9 @@ function updatePhysics() {
         }
     }
     
-    // Ripples / Shockwaves
     for (let i = ripples.length - 1; i >= 0; i--) {
         let r = ripples[i];
-        r.radius += (r.maxRadius - r.radius) * 0.1; // Ease out
+        r.radius += (r.maxRadius - r.radius) * 0.1;
         r.life -= 0.03;
         
         if (r.life <= 0) {
@@ -511,7 +492,7 @@ function updatePhysics() {
             ctx.stroke();
         }
     }
-    ctx.globalAlpha = 1.0; // Reset
+    ctx.globalAlpha = 1.0;
 }
 
 /**
@@ -524,7 +505,6 @@ function renderLoop(timestamp) {
     lastTime = timestamp;
     time += dt;
 
-    // Update FPS Counter
     framesThisSecond++;
     if (timestamp > lastFpsTime + 1000) {
         uiFps.innerText = framesThisSecond;
@@ -534,37 +514,26 @@ function renderLoop(timestamp) {
 
     drawBackground();
 
-    // The main canvas will clear fully each frame since we handle ghosting via bgCanvas 
-    // BUT user requested trailing motion blur for fingertips.
-    // Instead of clearRect, we fade the main canvas using destination-out to keep it transparent
     ctx.globalCompositeOperation = 'destination-out';
     ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
     ctx.fillRect(0, 0, width, height);
 
-    // Enable Screen mode for additive light effects (like neon bloom)
-    ctx.globalCompositeOperation = 'screen'; // Creates glowy overlapping effects
+    ctx.globalCompositeOperation = 'screen'; 
 
-    // Render Physics layer
     updatePhysics();
 
-    // Process Hand Logic if present
     if (currentHands.length > 0) {
-        
-        // 1. Draw Skeleton
         currentHands.forEach((hand, handIndex) => {
             const glowColor = themes[currentTheme](time, handIndex, 2);
             
-            // Draw MediaPipe skeleton connectors using custom styles
             drawConnectors(ctx, hand, HAND_CONNECTIONS, {
                 color: glowColor,
                 lineWidth: 2
             });
             
-            // Draw Landmarks with neon bloom
             ctx.shadowBlur = 15;
             ctx.shadowColor = glowColor;
             
-            // Only draw fingertips with intense bloom and spawn particles
             FINGER_TIPS.forEach((tipIndex, idx) => {
                 const pt = mapToCanvas(hand[tipIndex]);
                 const tipCol = themes[currentTheme](time, idx, FINGER_TIPS.length);
@@ -574,20 +543,17 @@ function renderLoop(timestamp) {
                 ctx.fillStyle = '#fff';
                 ctx.fill();
 
-                // Generate constant spark particles at fingertips
                 if (Math.random() > 0.6) {
                     createParticles(pt, tipCol, 1);
                 }
             });
-            ctx.shadowBlur = 0; // Reset
+            ctx.shadowBlur = 0;
         });
 
-        // 2. Cross-Hand Interactions (Lightning & Gradients)
         if (currentHands.length >= 2) {
             const h1 = currentHands[0];
             const h2 = currentHands[1];
 
-            // A. Rainbow Connecting Lines
             FINGER_TIPS.forEach((tipIndex, idx) => {
                 const pt1 = mapToCanvas(h1[tipIndex]);
                 const pt2 = mapToCanvas(h2[tipIndex]);
@@ -595,12 +561,9 @@ function renderLoop(timestamp) {
                 
                 const col = themes[currentTheme](time, idx, FINGER_TIPS.length);
                 
-                // Lightning electric arc when very close (but not touching)
                 if (dist < 150 && Math.random() > 0.5) {
-                    // Draw jagged lightning
                     ctx.beginPath();
                     ctx.moveTo(pt1.x, pt1.y);
-                    // Midpoint jitter
                     const midX = (pt1.x + pt2.x)/2 + (Math.random() - 0.5) * 50;
                     const midY = (pt1.y + pt2.y)/2 + (Math.random() - 0.5) * 50;
                     ctx.lineTo(midX, midY);
@@ -611,7 +574,57 @@ function renderLoop(timestamp) {
                     ctx.shadowColor = col;
                     ctx.lineWidth = 3;
                     ctx.stroke();
+                    ctx.shadowBlur = 0;
                 }
 
                 // Normal flowing gradient line
                 ctx.beginPath();
+                ctx.moveTo(pt1.x, pt1.y);
+                ctx.lineTo(pt2.x, pt2.y);
+                ctx.strokeStyle = col;
+                ctx.lineWidth = 1;
+                ctx.globalAlpha = 0.5;
+                ctx.stroke();
+                ctx.globalAlpha = 1.0;
+            });
+        }
+    }
+}
+
+/**
+ * MEDIAPIPE SETUP
+ */
+function initMediaPipe() {
+    const hands = new Hands({
+        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+    });
+
+    hands.setOptions({
+        maxNumHands: 2,
+        modelComplexity: 1,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5
+    });
+
+    hands.onResults((results) => {
+        currentHands = results.multiHandLandmarks;
+        uiHands.innerText = currentHands.length;
+        if (currentHands.length > 0) {
+            updateHum(currentHands);
+            detectGestures();
+        }
+    });
+
+    const camera = new Camera(videoElement, {
+        onFrame: async () => {
+            await hands.send({image: videoElement});
+        },
+        width: 1280,
+        height: 720
+    });
+    camera.start();
+}
+</script>
+</body>
+    </html>
+    
