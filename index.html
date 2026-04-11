@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>y.r.s | Pro Engine v4.0</title>
+    <title>y.r.s | Pro Engine v4.5</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
@@ -12,154 +12,133 @@
 
     <style>
         :root {
-            --bg-color: #020205;
-            --text-color: #ffffff;
-            --glass-bg: rgba(10, 15, 30, 0.6);
-            --glass-border: rgba(255, 255, 255, 0.1);
-            --glass-blur: blur(20px);
+            --bg-color: #010103;
             --accent: #00ffcc;
+            --panel-bg: rgba(10, 15, 30, 0.7);
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
         body {
             font-family: 'Inter', sans-serif;
             background-color: var(--bg-color);
-            color: var(--text-color);
+            color: white;
             overflow: hidden;
             height: 100vh;
-            width: 100vw;
         }
 
-        /* Viewport layering */
+        /* Video Layer */
         .viewport { position: absolute; inset: 0; z-index: 1; }
-        .input_video { position: absolute; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); filter: brightness(0.5); visibility: hidden; }
+        .input_video { position: absolute; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); filter: brightness(0.4); visibility: hidden; }
         canvas { position: absolute; inset: 0; width: 100%; height: 100%; transform: scaleX(-1); pointer-events: none; }
-        #bgCanvas { z-index: 2; }
-        #mainCanvas { z-index: 3; }
+        #mainCanvas { z-index: 5; }
 
-        /* UI Overlays */
+        /* Navigation UI */
         #hud {
-            position: absolute; top: 20px; left: 20px; z-index: 10;
+            position: absolute; top: 20px; left: 20px; z-index: 100;
             display: flex; flex-direction: column; gap: 10px; pointer-events: none;
         }
         .panel {
-            background: var(--glass-bg); backdrop-filter: var(--glass-blur);
-            border: 1px solid var(--glass-border); border-radius: 12px;
-            padding: 15px; border-left: 4px solid var(--accent);
+            background: var(--panel-bg); backdrop-filter: blur(15px);
+            border: 1px solid rgba(255,255,255,0.1); border-radius: 10px;
+            padding: 12px; border-left: 3px solid var(--accent);
         }
-        .stat-row { display: flex; justify-content: space-between; min-width: 160px; margin-bottom: 5px; font-size: 0.85rem; }
-        .stat-value { font-family: monospace; color: var(--accent); font-weight: bold; }
+        .stat-val { font-family: monospace; color: var(--accent); font-weight: bold; margin-left: 10px; }
 
         #themes {
             position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
-            z-index: 20; display: flex; gap: 8px; background: var(--glass-bg);
-            backdrop-filter: var(--glass-blur); border-radius: 40px; padding: 8px;
+            z-index: 100; display: flex; gap: 8px; background: var(--panel-bg);
+            padding: 8px; border-radius: 50px; backdrop-filter: blur(10px);
         }
         .theme-btn {
-            background: transparent; border: none; color: white; padding: 8px 16px;
-            border-radius: 20px; cursor: pointer; font-size: 0.8rem; transition: 0.3s;
+            background: transparent; border: none; color: white; padding: 8px 14px;
+            border-radius: 20px; font-size: 0.8rem; cursor: pointer;
         }
-        .theme-btn.active { background: rgba(255,255,255,0.15); box-shadow: 0 0 10px var(--accent); }
+        .theme-btn.active { background: var(--accent); color: black; font-weight: bold; }
 
-        /* Fixed Start Overlay */
+        /* Start Button Fix */
         #startOverlay {
-            position: fixed; inset: 0;
-            background: radial-gradient(circle at center, #0a0a1a 0%, #020205 100%);
-            z-index: 9999; display: flex; flex-direction: column;
-            justify-content: center; align-items: center; text-align: center;
+            position: fixed; inset: 0; z-index: 99999;
+            background: radial-gradient(circle, #0a0a1a, #010103);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
         }
-        .logo-text { font-size: 4rem; letter-spacing: 15px; margin-bottom: 10px; font-weight: 200; }
         .start-btn {
-            padding: 18px 50px; font-size: 1rem; color: white;
-            background: transparent; border: 1px solid var(--accent);
-            border-radius: 4px; cursor: pointer; letter-spacing: 4px;
-            text-transform: uppercase; transition: 0.4s; position: relative; z-index: 10000;
+            padding: 20px 60px; font-size: 1.2rem; background: transparent;
+            color: var(--accent); border: 2px solid var(--accent);
+            border-radius: 5px; cursor: pointer; letter-spacing: 5px; font-weight: bold;
         }
-        .start-btn:active { transform: scale(0.95); background: var(--accent); color: black; }
 
         .hidden { display: none !important; }
-
+        
+        /* Floating Toast */
         #gesture-toast {
-            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            font-size: 6rem; font-weight: 900; color: white; opacity: 0;
-            pointer-events: none; z-index: 100; -webkit-text-stroke: 2px var(--accent);
+            position: fixed; top: 20%; left: 50%; transform: translateX(-50%);
+            font-size: 4rem; font-weight: 900; color: white; opacity: 0;
+            pointer-events: none; z-index: 1000; -webkit-text-stroke: 1px var(--accent);
         }
-
         @keyframes pop {
-            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
-            50% { opacity: 0.8; transform: translate(-50%, -50%) scale(1.1); }
-            100% { opacity: 0; transform: translate(-50%, -50%) scale(1.2); }
+            0% { opacity: 0; transform: translate(-50%, 0) scale(0.8); }
+            50% { opacity: 1; transform: translate(-50%, -20px) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -40px) scale(1.1); }
         }
     </style>
 </head>
 <body>
 
     <div id="startOverlay">
-        <div class="logo-text">Y.R.S</div>
-        <p style="margin-bottom: 40px; color: #555; letter-spacing: 2px;">NEURAL ENGINE v4.0</p>
-        <button class="start-btn" id="startBtn">Initialize</button>
-        <p id="error-log" style="margin-top: 20px; color: #ff4444; font-size: 0.8rem;"></p>
+        <h1 style="letter-spacing: 20px; margin-bottom: 20px;">Y.R.S</h1>
+        <p style="color: #666; margin-bottom: 40px;">NAVIGATOR PRO v4.5</p>
+        <button class="start-btn" id="startBtn">INITIALIZE</button>
     </div>
 
     <div id="gesture-toast">SNAP</div>
 
     <div class="viewport">
         <video class="input_video" autoplay playsinline></video>
-        <canvas id="bgCanvas"></canvas>
         <canvas id="mainCanvas"></canvas>
     </div>
 
     <div id="hud" class="hidden">
         <div class="panel">
-            <div class="stat-row"><span>Engine</span><span class="stat-value" id="ui-fps">0 FPS</span></div>
-            <div class="stat-row"><span>Hands</span><span class="stat-value" id="ui-hands">0</span></div>
+            <div>Engine Status: <span class="stat-val" id="ui-fps">0 FPS</span></div>
+            <div>Hand Signal: <span class="stat-val" id="ui-hands">0</span></div>
         </div>
         <div class="panel">
-            <div class="stat-row"><span>Gesture</span><span class="stat-value" id="ui-gesture">Idle</span></div>
-            <div class="stat-row"><span>Spread</span><span class="stat-value" id="ui-spread">0%</span></div>
+            <div>Active Task: <span class="stat-val" id="ui-gesture">IDLE</span></div>
+            <div>Scroll Pos: <span class="stat-val" id="ui-scroll">0%</span></div>
         </div>
     </div>
 
     <div id="themes" class="hidden">
-        <button class="theme-btn active" data-theme="Rainbow">Prism</button>
-        <button class="theme-btn" data-theme="Cyberpunk">Neon</button>
-        <button class="theme-btn" data-theme="Lava">Inferno</button>
-        <button class="theme-btn" data-theme="Ocean">Abyss</button>
+        <button class="theme-btn active" data-theme="Neon">Neon</button>
+        <button class="theme-btn" data-theme="Prism">Prism</button>
+        <button class="theme-btn" data-theme="Abyss">Abyss</button>
     </div>
 
 <script>
 const videoElement = document.querySelector('.input_video');
-const bgCanvas = document.getElementById('bgCanvas');
 const mainCanvas = document.getElementById('mainCanvas');
-const bgCtx = bgCanvas.getContext('2d');
 const ctx = mainCanvas.getContext('2d');
 
 let width, height, time = 0, lastTs = performance.now();
 let frames = 0, lastFpsTs = performance.now();
 let currentHands = [];
-let particles = [], ripples = [], lasers = [], matrixDrops = [];
-let isTimeFrozen = false, freezeCD = 0, flash = 0, orbSize = 0;
-let lastPinch = [false, false], lastSnap = [null, null];
+let lasers = [], ripples = [], particles = [];
+let lastSnap = [null, null], lastScrollY = null;
 
-let currentTheme = 'Rainbow';
+let currentTheme = 'Neon';
 const palette = {
-    'Rainbow': (t, i) => `hsl(${(t * 60 + i * 40) % 360}, 100%, 60%)`,
-    'Cyberpunk': (t, i) => i % 2 === 0 ? '#ff003c' : '#00f0ff',
-    'Lava': (t, i) => `hsl(${(15 + i * 5) % 45}, 100%, 50%)`,
-    'Ocean': (t, i) => `hsl(${190 + i * 10}, 100%, 50%)`
+    'Neon': (t, i) => i % 2 === 0 ? '#00ffcc' : '#ff00cc',
+    'Prism': (t, i) => `hsl(${(t * 50 + i * 60) % 360}, 100%, 60%)`,
+    'Abyss': (t, i) => i % 2 === 0 ? '#0066ff' : '#003399'
 };
 
 function resize() {
     width = window.innerWidth; height = window.innerHeight;
-    bgCanvas.width = mainCanvas.width = width;
-    bgCanvas.height = mainCanvas.height = height;
-    matrixDrops = new Array(Math.floor(width/20)).fill(1).map(() => Math.random() * -50);
+    mainCanvas.width = width; mainCanvas.height = height;
 }
-window.addEventListener('resize', resize);
-resize();
+window.addEventListener('resize', resize); resize();
 
-// UI Logic
 document.querySelectorAll('.theme-btn').forEach(btn => {
     btn.onclick = (e) => {
         document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
@@ -175,49 +154,23 @@ document.getElementById('startBtn').onclick = async () => {
         document.getElementById('startOverlay').classList.add('hidden');
         document.getElementById('hud').classList.remove('hidden');
         document.getElementById('themes').classList.remove('hidden');
-        initAudio();
         initMediaPipe();
         requestAnimationFrame(loop);
-    } catch (err) {
-        document.getElementById('error-log').innerText = "Camera Access Denied or Not Found.";
-        console.error(err);
-    }
+    } catch (e) { alert("Camera Error: Please grant permissions."); }
 };
 
-let audioCtx, humOsc, humGain;
-function initAudio() {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    humOsc = audioCtx.createOscillator();
-    humGain = audioCtx.createGain();
-    humOsc.frequency.value = 80; humGain.gain.value = 0;
-    humOsc.connect(humGain); humGain.connect(audioCtx.destination);
-    humOsc.start();
-}
-
-function zap(f = 800) {
-    if(!audioCtx) return;
-    const o = audioCtx.createOscillator();
-    const g = audioCtx.createGain();
-    o.frequency.setValueAtTime(f, audioCtx.currentTime);
-    o.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.1);
-    g.gain.setValueAtTime(0.2, audioCtx.currentTime);
-    g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.1);
-    o.connect(g); g.connect(audioCtx.destination);
-    o.start(); o.stop(audioCtx.currentTime + 0.1);
-}
-
-const dist = (p1, p2) => Math.hypot(p1.x - p2.x, p1.y - p2.y);
 const map = (p) => ({ x: p.x * width, y: p.y * height });
+const dist = (p1, p2) => Math.hypot(p1.x - p2.x, p1.y - p2.y);
 
 function toast(txt) {
-    const el = document.getElementById('gesture-toast');
-    el.innerText = txt; el.style.animation = 'none';
-    el.offsetHeight; el.style.animation = 'pop 0.6s ease-out';
+    const t = document.getElementById('gesture-toast');
+    t.innerText = txt; t.style.animation = 'none';
+    t.offsetHeight; t.style.animation = 'pop 0.6s ease-out';
 }
 
 function loop(ts) {
     const dt = (ts - lastTs) / 1000;
-    lastTs = ts; if(!isTimeFrozen) time += dt;
+    lastTs = ts; time += dt;
 
     frames++;
     if(ts > lastFpsTs + 1000) {
@@ -225,96 +178,77 @@ function loop(ts) {
         frames = 0; lastFpsTs = ts;
     }
 
-    // Matrix
-    bgCtx.fillStyle = 'rgba(2, 2, 5, 0.15)';
-    bgCtx.fillRect(0,0,width,height);
-    if(!isTimeFrozen) {
-        bgCtx.font = '15px monospace';
-        bgCtx.fillStyle = palette[currentTheme](time, 1);
-        matrixDrops.forEach((y, i) => {
-            bgCtx.fillText(String.fromCharCode(0x30A0 + Math.random()*96), i*20, y*20);
-            if(y*20 > height && Math.random() > 0.98) matrixDrops[i] = 0;
-            matrixDrops[i]++;
-        });
-    }
-
     ctx.clearRect(0,0,width,height);
     ctx.globalCompositeOperation = 'screen';
 
-    // Gestures
-    if(freezeCD > 0) freezeCD--;
+    // Matrix Rain Lite Background
+    ctx.fillStyle = 'rgba(1, 1, 3, 0.2)';
+    ctx.fillRect(0,0,width,height);
+
     currentHands.forEach((hand, i) => {
         const thumb = hand[4], index = hand[8], middle = hand[12], pinky = hand[20], palm = hand[0];
-        
-        // Pinch
-        if(dist(thumb, index) < 0.05 && !lastPinch[i]) {
-            ripples.push({...map(thumb), r:0, m:200, l:1, c:palette[currentTheme](time, 1)});
-            zap(600); document.getElementById('ui-gesture').innerText = "PINCH";
-        }
-        lastPinch[i] = dist(thumb, index) < 0.05;
+        const color = palette[currentTheme](time, i);
 
-        // Snap
+        // 1. PINCH
+        if(dist(thumb, index) < 0.05) {
+            ctx.beginPath(); ctx.arc(map(thumb).x, map(thumb).y, 30, 0, Math.PI*2);
+            ctx.strokeStyle = color; ctx.stroke();
+            document.getElementById('ui-gesture').innerText = "CLICK";
+        }
+
+        // 2. SNAP
         if(lastSnap[i] && dist(thumb, middle) > 0.1) {
-            flash = 0.7; zap(1200); toast("SNAP"); lastSnap[i] = null;
-        } else if(dist(thumb, middle) < 0.05) lastSnap[i] = middle;
+            toast("BOOM!"); lastSnap[i] = null;
+        } else if(dist(thumb, middle) < 0.04) lastSnap[i] = true;
 
-        // Laser
-        if(dist(index, palm) > 0.3 && dist(middle, palm) < 0.15 && !isTimeFrozen) {
-            lasers.push({s:map(hand[5]), e:map(index), l:1, c:palette[currentTheme](time, i)});
-            document.getElementById('ui-gesture').innerText = "LASER";
+        // 3. TABLET NAV (SCROLL)
+        // Check if index is near the left edge of the screen (mapped to right due to mirroring)
+        const mappedIndex = map(index);
+        if (index.x < 0.3) { // Use original 0-1 scale, left third of camera
+            document.getElementById('ui-gesture').innerText = "SCROLLING";
+            document.getElementById('ui-scroll').innerText = Math.round(index.y * 100) + "%";
+            // Drawing a scroll bar UI
+            ctx.fillStyle = color;
+            ctx.fillRect(width-10, 0, 10, height * index.y);
         }
 
-        // Time Freeze
-        const sVal = Math.round(dist(index, pinky) * 300);
-        if(i === 0) {
-            document.getElementById('ui-spread').innerText = sVal + "%";
-            if(sVal > 95 && freezeCD === 0) {
-                isTimeFrozen = !isTimeFrozen; freezeCD = 50;
-                toast(isTimeFrozen ? "FREEZE" : "RESUME"); zap(isTimeFrozen ? 200 : 800);
-            }
+        // 4. LASER GUN
+        if(dist(index, palm) > 0.3 && dist(middle, palm) < 0.1) {
+            ctx.beginPath(); ctx.moveTo(map(hand[5]).x, map(hand[5]).y);
+            const tip = map(index);
+            ctx.lineTo(tip.x + (tip.x - map(hand[5]).x)*15, tip.y + (tip.y - map(hand[5]).y)*15);
+            ctx.strokeStyle = color; ctx.lineWidth = 15; ctx.stroke();
         }
 
         // Draw Skeleton
-        const col = palette[currentTheme](time, i);
-        drawConnectors(ctx, hand, HAND_CONNECTIONS, {color: col, lineWidth: 3});
-        FINGER_TIPS.forEach(f => {
+        drawConnectors(ctx, hand, HAND_CONNECTIONS, {color: color, lineWidth: 2});
+        [4,8,12,16,20].forEach(f => {
             const p = map(hand[f]);
-            ctx.beginPath(); ctx.arc(p.x, p.y, 6, 0, Math.PI*2);
-            ctx.fillStyle = 'white'; ctx.shadowBlur = 15; ctx.shadowColor = col; ctx.fill();
+            ctx.beginPath(); ctx.arc(p.x, p.y, 5, 0, Math.PI*2);
+            ctx.fillStyle = 'white'; ctx.fill();
         });
     });
-
-    // Render Lasers & Flash
-    lasers = lasers.filter(l => l.l > 0);
-    lasers.forEach(l => {
-        ctx.beginPath(); ctx.moveTo(l.s.x, l.s.y);
-        ctx.lineTo(l.s.x + (l.e.x-l.s.x)*20, l.s.y + (l.e.y-l.s.y)*20);
-        ctx.strokeStyle = l.c; ctx.lineWidth = 10*l.l; ctx.stroke();
-        l.l -= 0.1;
-    });
-
-    if(flash > 0) {
-        ctx.fillStyle = `rgba(255,255,255,${flash})`;
-        ctx.fillRect(0,0,width,height); flash -= 0.05;
-    }
 
     requestAnimationFrame(loop);
 }
 
 function initMediaPipe() {
-    const hands = new Hands({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`});
-    hands.setOptions({maxNumHands: 2, modelComplexity: 1, minDetectionConfidence: 0.6});
+    const hands = new Hands({locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`});
+    hands.setOptions({
+        maxNumHands: 2,
+        modelComplexity: 0, // FASTEST MODEL FOR TABLETS
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5
+    });
     hands.onResults(res => {
         currentHands = res.multiHandLandmarks || [];
         document.getElementById('ui-hands').innerText = currentHands.length;
     });
-    const camera = new Camera(videoElement, {
+    new Camera(videoElement, {
         onFrame: async () => await hands.send({image: videoElement}),
         width: 1280, height: 720
-    });
-    camera.start();
+    }).start();
 }
 </script>
 </body>
-        </html>
-    
+</html>
