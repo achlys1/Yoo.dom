@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>y.r.s | Pro Engine</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>y.r.s | Pro Engine v4.0</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
@@ -11,210 +11,84 @@
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
 
     <style>
-        /* --- DESIGN SYSTEM --- */
         :root {
             --bg-color: #020205;
             --text-color: #ffffff;
-            --glass-bg: rgba(10, 15, 30, 0.45);
+            --glass-bg: rgba(10, 15, 30, 0.6);
             --glass-border: rgba(255, 255, 255, 0.1);
             --glass-blur: blur(20px);
             --accent: #00ffcc;
-            --neon-pink: #ff00cc;
-            --neon-blue: #3333ff;
         }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            user-select: none;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
 
         body {
-            font-family: 'Inter', 'Segoe UI', Roboto, sans-serif;
+            font-family: 'Inter', sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
             overflow: hidden;
             height: 100vh;
+            width: 100vw;
         }
 
-        /* --- VISUAL LAYERING --- */
-        .viewport {
-            position: absolute;
-            inset: 0;
-            z-index: -1;
-        }
+        /* Viewport layering */
+        .viewport { position: absolute; inset: 0; z-index: 1; }
+        .input_video { position: absolute; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); filter: brightness(0.5); visibility: hidden; }
+        canvas { position: absolute; inset: 0; width: 100%; height: 100%; transform: scaleX(-1); pointer-events: none; }
+        #bgCanvas { z-index: 2; }
+        #mainCanvas { z-index: 3; }
 
-        .input_video {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transform: scaleX(-1);
-            filter: brightness(0.5) contrast(1.2) saturate(0.8);
-        }
-
-        canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            transform: scaleX(-1);
-            pointer-events: none;
-        }
-
-        #bgCanvas { z-index: 1; }
-        #mainCanvas { z-index: 5; }
-
-        /* --- UI COMPONENTS --- */
+        /* UI Overlays */
         #hud {
-            position: absolute;
-            top: 30px;
-            left: 30px;
-            z-index: 100;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            pointer-events: none;
-            transition: 0.5s ease;
+            position: absolute; top: 20px; left: 20px; z-index: 10;
+            display: flex; flex-direction: column; gap: 10px; pointer-events: none;
         }
-
         .panel {
-            background: var(--glass-bg);
-            backdrop-filter: var(--glass-blur);
-            -webkit-backdrop-filter: var(--glass-blur);
-            border: 1px solid var(--glass-border);
-            border-radius: 16px;
-            padding: 20px;
-            box-shadow: 0 15px 45px rgba(0, 0, 0, 0.6);
-            border-left: 4px solid var(--accent);
+            background: var(--glass-bg); backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--glass-border); border-radius: 12px;
+            padding: 15px; border-left: 4px solid var(--accent);
         }
-
-        .panel h3 {
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            margin-bottom: 12px;
-            color: rgba(255,255,255,0.4);
-        }
-
-        .stat-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            min-width: 200px;
-            margin-bottom: 8px;
-        }
-
-        .stat-label { font-size: 0.9rem; color: rgba(255,255,255,0.7); }
-        .stat-value { font-family: monospace; font-weight: 700; color: var(--accent); }
+        .stat-row { display: flex; justify-content: space-between; min-width: 160px; margin-bottom: 5px; font-size: 0.85rem; }
+        .stat-value { font-family: monospace; color: var(--accent); font-weight: bold; }
 
         #themes {
-            position: absolute;
-            bottom: 40px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 100;
-            display: flex;
-            gap: 12px;
-            background: var(--glass-bg);
-            backdrop-filter: var(--glass-blur);
-            border: 1px solid var(--glass-border);
-            border-radius: 50px;
-            padding: 10px;
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+            z-index: 20; display: flex; gap: 8px; background: var(--glass-bg);
+            backdrop-filter: var(--glass-blur); border-radius: 40px; padding: 8px;
         }
-
         .theme-btn {
-            background: transparent;
-            border: 1px solid transparent;
-            color: white;
-            padding: 10px 22px;
-            border-radius: 30px;
-            cursor: pointer;
-            font-size: 0.85rem;
-            font-weight: 600;
-            transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            background: transparent; border: none; color: white; padding: 8px 16px;
+            border-radius: 20px; cursor: pointer; font-size: 0.8rem; transition: 0.3s;
         }
+        .theme-btn.active { background: rgba(255,255,255,0.15); box-shadow: 0 0 10px var(--accent); }
 
-        .theme-btn:hover { background: rgba(255,255,255,0.1); }
-        .theme-btn.active {
-            background: rgba(255,255,255,0.15);
-            border-color: rgba(255,255,255,0.3);
-            box-shadow: 0 0 15px rgba(0, 255, 204, 0.2);
-        }
-
-        /* --- START OVERLAY --- */
+        /* Fixed Start Overlay */
         #startOverlay {
-            position: absolute;
-            inset: 0;
-            background: radial-gradient(circle at center, #101025 0%, #020205 100%);
-            z-index: 10000;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            transition: 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            position: fixed; inset: 0;
+            background: radial-gradient(circle at center, #0a0a1a 0%, #020205 100%);
+            z-index: 9999; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; text-align: center;
         }
-
-        .logo-text {
-            font-size: 5rem;
-            font-weight: 200;
-            letter-spacing: 20px;
-            margin-bottom: 20px;
-            background: linear-gradient(to right, #fff, #555);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
+        .logo-text { font-size: 4rem; letter-spacing: 15px; margin-bottom: 10px; font-weight: 200; }
         .start-btn {
-            position: relative;
-            padding: 20px 60px;
-            font-size: 1.1rem;
-            color: white;
-            background: transparent;
-            border: 1px solid rgba(255,255,255,0.2);
-            border-radius: 4px;
-            cursor: pointer;
-            overflow: hidden;
-            transition: 0.3s;
-            text-transform: uppercase;
-            letter-spacing: 4px;
+            padding: 18px 50px; font-size: 1rem; color: white;
+            background: transparent; border: 1px solid var(--accent);
+            border-radius: 4px; cursor: pointer; letter-spacing: 4px;
+            text-transform: uppercase; transition: 0.4s; position: relative; z-index: 10000;
         }
+        .start-btn:active { transform: scale(0.95); background: var(--accent); color: black; }
 
-        .start-btn:hover {
-            border-color: var(--accent);
-            box-shadow: 0 0 30px rgba(0, 255, 204, 0.3);
-            letter-spacing: 6px;
-        }
+        .hidden { display: none !important; }
 
-        .hidden { 
-            opacity: 0 !important; 
-            pointer-events: none !important; 
-            transform: scale(1.1);
-        }
-
-        /* --- GESTURE ALERTS --- */
         #gesture-toast {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 8rem;
-            font-weight: 900;
-            color: white;
-            opacity: 0;
-            pointer-events: none;
-            z-index: 200;
-            text-transform: uppercase;
-            font-style: italic;
-            -webkit-text-stroke: 2px var(--accent);
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 6rem; font-weight: 900; color: white; opacity: 0;
+            pointer-events: none; z-index: 100; -webkit-text-stroke: 2px var(--accent);
         }
 
-        @keyframes toastPop {
+        @keyframes pop {
             0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
-            20% { opacity: 0.8; transform: translate(-50%, -50%) scale(1.1); }
-            80% { opacity: 0.8; transform: translate(-50%, -50%) scale(1); }
+            50% { opacity: 0.8; transform: translate(-50%, -50%) scale(1.1); }
             100% { opacity: 0; transform: translate(-50%, -50%) scale(1.2); }
         }
     </style>
@@ -223,8 +97,9 @@
 
     <div id="startOverlay">
         <div class="logo-text">Y.R.S</div>
-        <p style="margin-bottom: 50px; color: #666; letter-spacing: 2px;">NEURAL HAND TRACKING v4.0</p>
+        <p style="margin-bottom: 40px; color: #555; letter-spacing: 2px;">NEURAL ENGINE v4.0</p>
         <button class="start-btn" id="startBtn">Initialize</button>
+        <p id="error-log" style="margin-top: 20px; color: #ff4444; font-size: 0.8rem;"></p>
     </div>
 
     <div id="gesture-toast">SNAP</div>
@@ -237,396 +112,209 @@
 
     <div id="hud" class="hidden">
         <div class="panel">
-            <h3>System Status</h3>
-            <div class="stat-row">
-                <span class="stat-label">Neural Engine</span>
-                <span class="stat-value" id="ui-fps">0 FPS</span>
-            </div>
-            <div class="stat-row">
-                <span class="stat-label">Hand Count</span>
-                <span class="stat-value" id="ui-hands">0</span>
-            </div>
+            <div class="stat-row"><span>Engine</span><span class="stat-value" id="ui-fps">0 FPS</span></div>
+            <div class="stat-row"><span>Hands</span><span class="stat-value" id="ui-hands">0</span></div>
         </div>
         <div class="panel">
-            <h3>Gesture Analysis</h3>
-            <div class="stat-row">
-                <span class="stat-label">Active State</span>
-                <span class="stat-value" id="ui-gesture">Idle</span>
-            </div>
-            <div class="stat-row">
-                <span class="stat-label">Flex Tension</span>
-                <span class="stat-value" id="ui-spread">0%</span>
-            </div>
+            <div class="stat-row"><span>Gesture</span><span class="stat-value" id="ui-gesture">Idle</span></div>
+            <div class="stat-row"><span>Spread</span><span class="stat-value" id="ui-spread">0%</span></div>
         </div>
     </div>
 
     <div id="themes" class="hidden">
         <button class="theme-btn active" data-theme="Rainbow">Prism</button>
-        <button class="theme-btn" data-theme="Cyberpunk">NightCity</button>
+        <button class="theme-btn" data-theme="Cyberpunk">Neon</button>
         <button class="theme-btn" data-theme="Lava">Inferno</button>
-        <button class="theme-btn" data-theme="Ocean">DeepSea</button>
-        <button class="theme-btn" data-theme="Galaxy">Nebula</button>
+        <button class="theme-btn" data-theme="Ocean">Abyss</button>
     </div>
 
 <script>
-/**
- * --- CORE ENGINE CONFIGURATION ---
- */
 const videoElement = document.querySelector('.input_video');
 const bgCanvas = document.getElementById('bgCanvas');
 const mainCanvas = document.getElementById('mainCanvas');
 const bgCtx = bgCanvas.getContext('2d');
 const ctx = mainCanvas.getContext('2d');
 
-let width, height;
-let time = 0;
-let lastTimestamp = performance.now();
-let frames = 0;
-let lastFpsTime = performance.now();
-
-// Feature Flags & States
-let isTimeFrozen = false;
-let freezeCooldown = 0;
-let flashOpacity = 0;
+let width, height, time = 0, lastTs = performance.now();
+let frames = 0, lastFpsTs = performance.now();
 let currentHands = [];
-let matrixDrops = [];
-let particles = [];
-let ripples = [];
-let lasers = [];
-let orbActive = false;
-let orbSize = 0;
+let particles = [], ripples = [], lasers = [], matrixDrops = [];
+let isTimeFrozen = false, freezeCD = 0, flash = 0, orbSize = 0;
+let lastPinch = [false, false], lastSnap = [null, null];
 
-// Input History (for Snaps/Velocity)
-let lastPinch = [false, false];
-let lastSnapPos = [null, null];
-
-// Theme Definitions
 let currentTheme = 'Rainbow';
 const palette = {
-    'Rainbow':   (t, i, total) => `hsl(${(t * 60 + i * (360/total)) % 360}, 100%, 65%)`,
-    'Cyberpunk': (t, i, total) => (i % 2 === 0) ? '#ff003c' : '#00f0ff',
-    'Lava':      (t, i, total) => `hsl(${(10 + Math.sin(t)*10 + i*2) % 40}, 100%, 55%)`,
-    'Ocean':     (t, i, total) => `hsl(${190 + Math.cos(t)*20 + i*5}, 100%, 60%)`,
-    'Galaxy':    (t, i, total) => `hsl(${270 + Math.sin(t*0.5)*50 + i*10}, 100%, 70%)`
+    'Rainbow': (t, i) => `hsl(${(t * 60 + i * 40) % 360}, 100%, 60%)`,
+    'Cyberpunk': (t, i) => i % 2 === 0 ? '#ff003c' : '#00f0ff',
+    'Lava': (t, i) => `hsl(${(15 + i * 5) % 45}, 100%, 50%)`,
+    'Ocean': (t, i) => `hsl(${190 + i * 10}, 100%, 50%)`
 };
 
-/**
- * --- INITIALIZATION & UI ---
- */
-function setupCanvas() {
-    width = window.innerWidth;
-    height = window.innerHeight;
+function resize() {
+    width = window.innerWidth; height = window.innerHeight;
     bgCanvas.width = mainCanvas.width = width;
     bgCanvas.height = mainCanvas.height = height;
-    
-    // Matrix Init
-    const columns = Math.floor(width / 20);
-    matrixDrops = new Array(columns).fill(1).map(() => Math.random() * -100);
+    matrixDrops = new Array(Math.floor(width/20)).fill(1).map(() => Math.random() * -50);
 }
-window.addEventListener('resize', setupCanvas);
-setupCanvas();
+window.addEventListener('resize', resize);
+resize();
 
+// UI Logic
 document.querySelectorAll('.theme-btn').forEach(btn => {
     btn.onclick = (e) => {
         document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
         e.target.classList.add('active');
         currentTheme = e.target.dataset.theme;
-        const color = palette[currentTheme](0, 1, 1);
-        document.documentElement.style.setProperty('--accent', color);
-    };
+    }
 });
 
-document.getElementById('startBtn').onclick = () => {
-    document.getElementById('startOverlay').classList.add('hidden');
-    document.getElementById('hud').classList.remove('hidden');
-    document.getElementById('themes').classList.remove('hidden');
-    initAudio();
-    initMediaPipe();
-    requestAnimationFrame(mainLoop);
+document.getElementById('startBtn').onclick = async () => {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        videoElement.srcObject = stream;
+        document.getElementById('startOverlay').classList.add('hidden');
+        document.getElementById('hud').classList.remove('hidden');
+        document.getElementById('themes').classList.remove('hidden');
+        initAudio();
+        initMediaPipe();
+        requestAnimationFrame(loop);
+    } catch (err) {
+        document.getElementById('error-log').innerText = "Camera Access Denied or Not Found.";
+        console.error(err);
+    }
 };
 
-/**
- * --- AUDIO SYSTEM ---
- */
 let audioCtx, humOsc, humGain;
-
 function initAudio() {
-    try {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        humOsc = audioCtx.createOscillator();
-        humGain = audioCtx.createGain();
-        humOsc.type = 'sine';
-        humOsc.frequency.setValueAtTime(80, audioCtx.currentTime);
-        humGain.gain.setValueAtTime(0, audioCtx.currentTime);
-        humOsc.connect(humGain);
-        humGain.connect(audioCtx.destination);
-        humOsc.start();
-    } catch(e) {}
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    humOsc = audioCtx.createOscillator();
+    humGain = audioCtx.createGain();
+    humOsc.frequency.value = 80; humGain.gain.value = 0;
+    humOsc.connect(humGain); humGain.connect(audioCtx.destination);
+    humOsc.start();
 }
 
-function playZap(freq = 800, type = 'sawtooth') {
+function zap(f = 800) {
     if(!audioCtx) return;
-    const osc = audioCtx.createOscillator();
+    const o = audioCtx.createOscillator();
     const g = audioCtx.createGain();
-    osc.type = type;
-    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.15);
-    g.gain.setValueAtTime(0.3, audioCtx.currentTime);
-    g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.15);
-    osc.connect(g);
-    g.connect(audioCtx.destination);
-    osc.start();
-    osc.stop(audioCtx.currentTime + 0.2);
+    o.frequency.setValueAtTime(f, audioCtx.currentTime);
+    o.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.1);
+    g.gain.setValueAtTime(0.2, audioCtx.currentTime);
+    g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.1);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(); o.stop(audioCtx.currentTime + 0.1);
 }
 
-/**
- * --- PHYSICS & MATH ---
- */
 const dist = (p1, p2) => Math.hypot(p1.x - p2.x, p1.y - p2.y);
-const toScreen = (p) => ({ x: p.x * width, y: p.y * height });
+const map = (p) => ({ x: p.x * width, y: p.y * height });
 
-function createParticles(pos, color, amt = 8) {
-    for(let i=0; i<amt; i++) {
-        particles.push({
-            x: pos.x, y: pos.y,
-            vx: (Math.random() - 0.5) * 12,
-            vy: (Math.random() - 0.5) * 12,
-            life: 1.0,
-            c: color,
-            s: Math.random() * 4 + 2
+function toast(txt) {
+    const el = document.getElementById('gesture-toast');
+    el.innerText = txt; el.style.animation = 'none';
+    el.offsetHeight; el.style.animation = 'pop 0.6s ease-out';
+}
+
+function loop(ts) {
+    const dt = (ts - lastTs) / 1000;
+    lastTs = ts; if(!isTimeFrozen) time += dt;
+
+    frames++;
+    if(ts > lastFpsTs + 1000) {
+        document.getElementById('ui-fps').innerText = frames + " FPS";
+        frames = 0; lastFpsTs = ts;
+    }
+
+    // Matrix
+    bgCtx.fillStyle = 'rgba(2, 2, 5, 0.15)';
+    bgCtx.fillRect(0,0,width,height);
+    if(!isTimeFrozen) {
+        bgCtx.font = '15px monospace';
+        bgCtx.fillStyle = palette[currentTheme](time, 1);
+        matrixDrops.forEach((y, i) => {
+            bgCtx.fillText(String.fromCharCode(0x30A0 + Math.random()*96), i*20, y*20);
+            if(y*20 > height && Math.random() > 0.98) matrixDrops[i] = 0;
+            matrixDrops[i]++;
         });
     }
-}
 
-function triggerToast(text) {
-    const el = document.getElementById('gesture-toast');
-    el.innerText = text;
-    el.style.animation = 'none';
-    el.offsetHeight; // Reflow
-    el.style.animation = 'toastPop 0.6s ease-out';
-}
-
-/**
- * --- GESTURE LOGIC ---
- */
-function handleGestures() {
-    if (!currentHands.length) {
-        if(humGain) humGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
-        orbActive = false;
-        return;
-    }
-
-    if(freezeCooldown > 0) freezeCooldown--;
-
-    currentHands.forEach((hand, idx) => {
-        const thumb = hand[4], index = hand[8], middle = hand[12], pinky = hand[20], palm = hand[0];
-        const screenIndex = toScreen(index);
-
-        // 1. PINCH (Thumb + Index)
-        const pDist = dist(thumb, index);
-        const isPinching = pDist < 0.05;
-        if(isPinching && !lastPinch[idx]) {
-            ripples.push({ ...toScreen(thumb), r: 0, m: 250, life: 1, c: '#fff' });
-            playZap(600);
-            document.getElementById('ui-gesture').innerText = "LINKED";
-        }
-        lastPinch[idx] = isPinching;
-
-        // 2. THANOS SNAP (Thumb + Middle)
-        const sDist = dist(thumb, middle);
-        const wasSnapping = lastSnapPos[idx] !== null;
-        if (sDist < 0.04) {
-            lastSnapPos[idx] = { ...middle };
-        } else if (wasSnapping && sDist > 0.1) {
-            // Trigger Snap
-            flashOpacity = 0.8;
-            playZap(1200, 'square');
-            triggerToast("SNAP");
-            createParticles(toScreen(middle), '#fff', 40);
-            lastSnapPos[idx] = null;
-        }
-
-        // 3. LASER GUNS
-        const isPointing = dist(index, palm) > 0.3 && dist(middle, palm) < 0.15;
-        if(isPointing && !isTimeFrozen) {
-            lasers.push({ 
-                s: toScreen(hand[5]), 
-                e: toScreen(index), 
-                life: 1, 
-                c: palette[currentTheme](time, idx, 2) 
-            });
-            if(Math.random() > 0.8) playZap(2000, 'sine');
-        }
-
-        // 4. TIME FREEZE (Double Hand Spread)
-        const spread = dist(index, pinky);
-        if(idx === 0) {
-            let sVal = Math.min(Math.round(spread * 300), 100);
-            document.getElementById('ui-spread').innerText = sVal + "%";
-            
-            if(sVal > 95 && freezeCooldown === 0) {
-                isTimeFrozen = !isTimeFrozen;
-                freezeCooldown = 50;
-                triggerToast(isTimeFrozen ? "FREEZE" : "RESUME");
-                playZap(isTimeFrozen ? 200 : 800);
-            }
-        }
-    });
-
-    // 5. ENERGY ORB (Palms facing)
-    if (currentHands.length === 2) {
-        const dPalms = dist(currentHands[0][0], currentHands[1][0]);
-        if(dPalms < 0.35) {
-            orbActive = true;
-            orbSize = Math.min(orbSize + 5, 140);
-            if(humGain) humGain.gain.setTargetAtTime(0.2, audioCtx.currentTime, 0.1);
-        } else {
-            orbActive = false;
-            orbSize = Math.max(orbSize - 10, 0);
-        }
-    } else {
-        orbSize = Math.max(orbSize - 10, 0);
-    }
-}
-
-/**
- * --- RENDER PIPELINE ---
- */
-function drawMatrix() {
-    bgCtx.fillStyle = 'rgba(2, 2, 5, 0.15)';
-    bgCtx.fillRect(0, 0, width, height);
-    
-    if(isTimeFrozen) return;
-
-    bgCtx.font = '15px monospace';
-    bgCtx.fillStyle = palette[currentTheme](time, 1, 1);
-
-    matrixDrops.forEach((y, i) => {
-        const char = String.fromCharCode(0x30A0 + Math.random() * 96);
-        bgCtx.fillText(char, i * 20, y * 20);
-        
-        if (y * 20 > height && Math.random() > 0.975) matrixDrops[i] = 0;
-        matrixDrops[i]++;
-    });
-}
-
-function updatePhysics() {
-    // Particles
-    for(let i=particles.length-1; i>=0; i--) {
-        const p = particles[i];
-        if(!isTimeFrozen) {
-            p.x += p.vx; p.y += p.vy;
-            p.vy += 0.4; // Gravity
-            p.life -= 0.02;
-        }
-        if(p.life <= 0) particles.splice(i, 1);
-        else {
-            ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, Math.PI*2);
-            ctx.fillStyle = p.c; ctx.globalAlpha = p.life;
-            ctx.fill();
-        }
-    }
-
-    // Ripples
-    for(let i=ripples.length-1; i>=0; i--) {
-        const r = ripples[i];
-        if(!isTimeFrozen) {
-            r.r += (r.m - r.r) * 0.1;
-            r.life -= 0.03;
-        }
-        if(r.life <= 0) ripples.splice(i, 1);
-        else {
-            ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, Math.PI*2);
-            ctx.strokeStyle = r.c; ctx.lineWidth = 5 * r.life;
-            ctx.globalAlpha = r.life; ctx.stroke();
-        }
-    }
-    ctx.globalAlpha = 1;
-}
-
-function mainLoop(ts) {
-    const dt = (ts - lastTimestamp) / 1000;
-    lastTimestamp = ts;
-    if(!isTimeFrozen) time += dt;
-
-    // HUD Stats
-    frames++;
-    if(ts > lastFpsTime + 1000) {
-        document.getElementById('ui-fps').innerText = frames + " FPS";
-        frames = 0; lastFpsTime = ts;
-    }
-
-    drawMatrix();
-    ctx.clearRect(0, 0, width, height);
+    ctx.clearRect(0,0,width,height);
     ctx.globalCompositeOperation = 'screen';
 
-    handleGestures();
-    updatePhysics();
-
-    // Lasers
-    lasers = lasers.filter(l => l.life > 0);
-    lasers.forEach(l => {
-        const dx = l.e.x - l.s.x, dy = l.e.y - l.s.y;
-        ctx.beginPath();
-        ctx.moveTo(l.s.x, l.s.y);
-        ctx.lineTo(l.s.x + dx * 20, l.s.y + dy * 20);
-        ctx.strokeStyle = l.c; ctx.lineWidth = 12 * l.life;
-        ctx.shadowBlur = 20; ctx.shadowColor = l.c;
-        ctx.stroke();
-        l.life -= 0.15;
-    });
-
-    // Orb
-    if(orbSize > 1) {
-        const p1 = toScreen(currentHands[0][0]), p2 = toScreen(currentHands[1][0]);
-        const mx = (p1.x + p2.x)/2, my = (p1.y + p2.y)/2;
-        const grad = ctx.createRadialGradient(mx, my, 0, mx, my, orbSize);
-        grad.addColorStop(0, '#fff');
-        grad.addColorStop(0.3, palette[currentTheme](time, 1, 1));
-        grad.addColorStop(1, 'transparent');
-        ctx.fillStyle = grad;
-        ctx.beginPath(); ctx.arc(mx, my, orbSize + Math.sin(time*10)*10, 0, Math.PI*2);
-        ctx.fill();
-    }
-
-    // Hand Skeleton
-    currentHands.forEach((hand, hi) => {
-        const color = palette[currentTheme](time, hi, currentHands.length);
-        drawConnectors(ctx, hand, HAND_CONNECTIONS, { color, lineWidth: 3 });
+    // Gestures
+    if(freezeCD > 0) freezeCD--;
+    currentHands.forEach((hand, i) => {
+        const thumb = hand[4], index = hand[8], middle = hand[12], pinky = hand[20], palm = hand[0];
         
-        FINGER_TIPS.forEach((f, fi) => {
-            const p = toScreen(hand[f]);
-            ctx.shadowBlur = 15; ctx.shadowColor = color;
+        // Pinch
+        if(dist(thumb, index) < 0.05 && !lastPinch[i]) {
+            ripples.push({...map(thumb), r:0, m:200, l:1, c:palette[currentTheme](time, 1)});
+            zap(600); document.getElementById('ui-gesture').innerText = "PINCH";
+        }
+        lastPinch[i] = dist(thumb, index) < 0.05;
+
+        // Snap
+        if(lastSnap[i] && dist(thumb, middle) > 0.1) {
+            flash = 0.7; zap(1200); toast("SNAP"); lastSnap[i] = null;
+        } else if(dist(thumb, middle) < 0.05) lastSnap[i] = middle;
+
+        // Laser
+        if(dist(index, palm) > 0.3 && dist(middle, palm) < 0.15 && !isTimeFrozen) {
+            lasers.push({s:map(hand[5]), e:map(index), l:1, c:palette[currentTheme](time, i)});
+            document.getElementById('ui-gesture').innerText = "LASER";
+        }
+
+        // Time Freeze
+        const sVal = Math.round(dist(index, pinky) * 300);
+        if(i === 0) {
+            document.getElementById('ui-spread').innerText = sVal + "%";
+            if(sVal > 95 && freezeCD === 0) {
+                isTimeFrozen = !isTimeFrozen; freezeCD = 50;
+                toast(isTimeFrozen ? "FREEZE" : "RESUME"); zap(isTimeFrozen ? 200 : 800);
+            }
+        }
+
+        // Draw Skeleton
+        const col = palette[currentTheme](time, i);
+        drawConnectors(ctx, hand, HAND_CONNECTIONS, {color: col, lineWidth: 3});
+        FINGER_TIPS.forEach(f => {
+            const p = map(hand[f]);
             ctx.beginPath(); ctx.arc(p.x, p.y, 6, 0, Math.PI*2);
-            ctx.fillStyle = '#fff'; ctx.fill();
-            if(Math.random() > 0.8 && !isTimeFrozen) createParticles(p, color, 1);
+            ctx.fillStyle = 'white'; ctx.shadowBlur = 15; ctx.shadowColor = col; ctx.fill();
         });
     });
 
-    // Snap Flash
-    if(flashOpacity > 0) {
-        ctx.fillStyle = `rgba(255,255,255,${flashOpacity})`;
-        ctx.fillRect(0, 0, width, height);
-        flashOpacity -= 0.04;
+    // Render Lasers & Flash
+    lasers = lasers.filter(l => l.l > 0);
+    lasers.forEach(l => {
+        ctx.beginPath(); ctx.moveTo(l.s.x, l.s.y);
+        ctx.lineTo(l.s.x + (l.e.x-l.s.x)*20, l.s.y + (l.e.y-l.s.y)*20);
+        ctx.strokeStyle = l.c; ctx.lineWidth = 10*l.l; ctx.stroke();
+        l.l -= 0.1;
+    });
+
+    if(flash > 0) {
+        ctx.fillStyle = `rgba(255,255,255,${flash})`;
+        ctx.fillRect(0,0,width,height); flash -= 0.05;
     }
 
-    ctx.shadowBlur = 0;
-    requestAnimationFrame(mainLoop);
+    requestAnimationFrame(loop);
 }
 
 function initMediaPipe() {
-    const hands = new Hands({
-        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-    });
-    hands.setOptions({
-        maxNumHands: 2,
-        modelComplexity: 1,
-        minDetectionConfidence: 0.6,
-        minTrackingConfidence: 0.6
-    });
+    const hands = new Hands({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`});
+    hands.setOptions({maxNumHands: 2, modelComplexity: 1, minDetectionConfidence: 0.6});
     hands.onResults(res => {
         currentHands = res.multiHandLandmarks || [];
         document.getElementById('ui-hands').innerText = currentHands.length;
     });
-
-    const camera = new Camera(videoElement    
+    const camera = new Camera(videoElement, {
+        onFrame: async () => await hands.send({image: videoElement}),
+        width: 1280, height: 720
+    });
+    camera.start();
+}
+</script>
+</body>
+        </html>
+    
