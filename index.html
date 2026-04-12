@@ -145,7 +145,8 @@
         <div style="height: 500px;"></div>
     </div>
 
-<script>
+
+    <script>
 const videoElement = document.querySelector('.input_video');
 const canvasCtx = document.getElementById('arCanvas').getContext('2d');
 const cursor = document.getElementById('virtual-cursor');
@@ -157,6 +158,10 @@ let smoothedCursor = { x: width/2, y: height/2 };
 let clickCooldown = 0, geoLocked = false;
 let aiLoaded = false; 
 
+// 🔊 SOUND SYSTEM
+const clickSound = new Audio("https://assets.mixkit.co/sfx/preview/mixkit-select-click-1109.mp3");
+const bootSound = new Audio("https://assets.mixkit.co/sfx/preview/mixkit-arcade-retro-changing-tab-206.wav");
+
 window.addEventListener('resize', () => {
     width = window.innerWidth; height = window.innerHeight;
     document.getElementById('arCanvas').width = width;
@@ -165,6 +170,7 @@ window.addEventListener('resize', () => {
 window.dispatchEvent(new Event('resize'));
 
 document.getElementById('startBtn').onclick = async () => {
+    bootSound.play();
     document.getElementById('startBtn').innerText = "CONNECTING...";
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -173,71 +179,99 @@ document.getElementById('startBtn').onclick = async () => {
         document.getElementById('hud').classList.remove('hidden');
         document.getElementById('realContent').classList.remove('hidden');
         
-        uiGesture.innerText = "DOWNLOADING AI... (Wait 5-10s)";
+        uiGesture.innerText = "LOADING AI...";
         uiGesture.classList.add('warning');
         
         initMediaPipe();
         requestAnimationFrame(engineLoop);
     } catch (e) {
-        document.getElementById('startBtn').innerText = "CAMERA ACCESS DENIED";
+        document.getElementById('startBtn').innerText = "CAMERA DENIED";
     }
 };
 
 const dist = (p1, p2) => Math.hypot(p1.x - p2.x, p1.y - p2.y);
 const map = (p) => ({ x: (1 - p.x) * width, y: p.y * height }); 
 
-function smoothLerp(current, target, factor = 0.3) {
+function smoothLerp(current, target, factor = 0.15) {
     return current + (target - current) * factor;
+}
+
+// ✨ UI Feedback Glow
+function flashGesture(text) {
+    uiGesture.innerText = text;
+    uiGesture.style.textShadow = "0 0 15px #00ffcc";
+    setTimeout(() => {
+        uiGesture.style.textShadow = "none";
+    }, 200);
+}
+
+async function fetchCity(lat, lon) {
+    try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+        const data = await res.json();
+        return data.address.city || data.address.town || data.address.state || "UNKNOWN";
+    } catch {
+        return "UNKNOWN";
+    }
 }
 
 function processCommands(hand) {
     const thumb = hand[4], index = hand[8], middle = hand[12], pinky = hand[20], palm = hand[0];
 
+    // 🎯 Cursor
     const targetCursor = map(index);
-    smoothedCursor.x = smoothLerp(smoothedCursor.x, targetCursor.x, 0.2);
-    smoothedCursor.y = smoothLerp(smoothedCursor.y, targetCursor.y, 0.2);
+    smoothedCursor.x = smoothLerp(smoothedCursor.x, targetCursor.x);
+    smoothedCursor.y = smoothLerp(smoothedCursor.y, targetCursor.y);
     
     cursor.style.opacity = 1;
     cursor.style.left = smoothedCursor.x + 'px';
     cursor.style.top = smoothedCursor.y + 'px';
 
+    // 🤏 CLICK
     if (dist(thumb, index) < 0.05) {
-        uiGesture.innerText = "CLICKING";
+        flashGesture("CLICK");
         cursor.classList.add('clicking');
-        
+
         if (clickCooldown === 0) {
-            const elementUnderCursor = document.elementFromPoint(smoothedCursor.x, smoothedCursor.y);
-            if (elementUnderCursor && typeof elementUnderCursor.click === 'function') {
-                elementUnderCursor.click(); 
-                clickCooldown = 30; 
+            const el = document.elementFromPoint(smoothedCursor.x, smoothedCursor.y);
+            if (el && typeof el.click === 'function') {
+                el.click();
+                clickSound.play();
+                clickCooldown = 25;
             }
         }
     } else {
         cursor.classList.remove('clicking');
     }
 
+    // ✌️ SCROLL
     const isPeace = dist(index, palm) > 0.3 && dist(middle, palm) > 0.3 && dist(pinky, palm) < 0.2;
     if (isPeace) {
-        uiGesture.innerText = "SCROLLING";
-        const neutralY = 0.5; 
-        const scrollSpeed = (hand[0].y - neutralY) * 60; 
-        window.scrollBy(0, scrollSpeed);
+        flashGesture("SCROLL");
+        const speed = (hand[0].y - 0.5) * 70;
+        window.scrollBy(0, speed);
     }
 
+    // 🤙 GEO
     const isShaka = dist(thumb, palm) > 0.3 && dist(pinky, palm) > 0.3 && dist(index, palm) < 0.2;
     if (isShaka && !geoLocked) {
-        uiGesture.innerText = "FETCHING GEO-DATA...";
+        flashGesture("GEO SCAN");
         geoLocked = true;
-        document.getElementById('geo-panel').classList.remove('hidden');
-        document.getElementById('geo-panel').style.opacity = 1;
+
+        const panel = document.getElementById('geo-panel');
+        panel.classList.remove('hidden');
+        panel.style.opacity = 1;
 
         if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition((position) => {
-                document.getElementById('geo-lat').innerText = position.coords.latitude.toFixed(4);
-                document.getElementById('geo-lon').innerText = position.coords.longitude.toFixed(4);
-                document.getElementById('geo-city').innerText = "LOCATION MATCH: RAIPUR, IN";
-            }, () => {
-                document.getElementById('geo-city').innerText = "GPS DENIED BY USER";
+            navigator.geolocation.getCurrentPosition(async (pos) => {
+                const lat = pos.coords.latitude.toFixed(4);
+                const lon = pos.coords.longitude.toFixed(4);
+
+                document.getElementById('geo-lat').innerText = lat;
+                document.getElementById('geo-lon').innerText = lon;
+
+                const city = await fetchCity(lat, lon);
+                document.getElementById('geo-city').innerText = "LOCATION: " + city.toUpperCase();
             });
         }
     }
@@ -260,7 +294,7 @@ function engineLoop(ts) {
 
     canvasCtx.clearRect(0, 0, width, height);
 
-    if (currentHands && currentHands.length > 0) {
+    if (currentHands.length > 0) {
         document.getElementById('ui-hands').innerText = currentHands.length;
         
         currentHands.forEach((hand) => {
@@ -268,24 +302,10 @@ function engineLoop(ts) {
 
             canvasCtx.globalCompositeOperation = 'screen';
             drawConnectors(canvasCtx, hand, HAND_CONNECTIONS, {color: '#00ffcc', lineWidth: 2});
-            
-            hand.forEach((lm) => {
-                const pt = map(lm);
-                canvasCtx.beginPath();
-                canvasCtx.arc(pt.x, pt.y, 3, 0, Math.PI*2);
-                canvasCtx.fillStyle = '#ffffff';
-                canvasCtx.shadowBlur = 10;
-                canvasCtx.shadowColor = '#00ffcc';
-                canvasCtx.fill();
-            });
-            canvasCtx.shadowBlur = 0;
         });
     } else {
         document.getElementById('ui-hands').innerText = "0";
-        if (aiLoaded) {
-            uiGesture.innerText = "SCANNING";
-            uiGesture.classList.remove('warning');
-        }
+        if (aiLoaded) uiGesture.innerText = "SCANNING";
         cursor.style.opacity = 0;
     }
 
@@ -294,9 +314,10 @@ function engineLoop(ts) {
 
 function initMediaPipe() {
     const hands = new Hands({locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`});
+    
     hands.setOptions({
-        maxNumHands: 1, 
-        modelComplexity: 0, // Turbo speed
+        maxNumHands: 1,
+        modelComplexity: 0,
         minDetectionConfidence: 0.5,
         minTrackingConfidence: 0.5
     });
@@ -311,16 +332,17 @@ function initMediaPipe() {
     });
     
     new Camera(videoElement, {
-        onFrame: async () => { 
-            try {
-                await hands.send({image: videoElement}); 
-            } catch (e) {}
+        onFrame: async () => {
+            try { await hands.send({image: videoElement}); } catch {}
         },
-        // IMPORTANT: Lowered resolution so tablets don't choke and lag
         width: 640, height: 480 
     }).start();
 }
 </script>
+
+    
+        
+
 </body>
                                                                                                  </html>
             
