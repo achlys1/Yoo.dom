@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>y.r.s | OS Navigator v5.0</title>
+    <title>y.r.s | OS Navigator v5.1</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
@@ -24,20 +24,16 @@
             font-family: 'Inter', sans-serif;
             background-color: var(--bg-color);
             color: var(--text);
-            /* Allowing real scroll now */
             overflow-x: hidden;
             overflow-y: auto;
-            height: 200vh; /* Making the page long to test scrolling */
+            height: 200vh;
         }
 
-        /* Fixed Camera Background */
         .camera-layer { position: fixed; inset: 0; z-index: -2; }
         .input_video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); filter: brightness(0.3) contrast(1.2); }
         
-        /* Fixed AR Drawing Layer (Above website content, but passes clicks through) */
         #arCanvas { position: fixed; inset: 0; width: 100%; height: 100%; transform: scaleX(-1); z-index: 100; pointer-events: none; }
 
-        /* HUD - Fixed on Screen */
         #hud {
             position: fixed; top: 20px; left: 20px; z-index: 101;
             display: flex; flex-direction: column; gap: 10px; pointer-events: none;
@@ -46,19 +42,24 @@
             background: var(--panel-bg); backdrop-filter: blur(10px);
             border: 1px solid rgba(0, 255, 204, 0.2); border-radius: 8px;
             padding: 15px; border-left: 4px solid var(--accent);
-            font-size: 0.85rem; letter-spacing: 1px; width: 220px;
+            font-size: 0.85rem; letter-spacing: 1px; width: 230px;
         }
         .stat-row { display: flex; justify-content: space-between; margin-bottom: 6px; }
         .stat-val { font-family: monospace; color: var(--accent); font-weight: bold; }
+        .warning { color: #ffcc00; animation: pulse 1.5s infinite; }
 
-        /* Location Panel */
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; text-shadow: 0 0 10px #ffcc00; }
+            100% { opacity: 0.6; }
+        }
+
         #geo-panel {
             position: fixed; top: 20px; right: 20px; z-index: 101;
             background: rgba(255, 0, 50, 0.1); border-left: 4px solid #ff0055;
             transition: 0.5s; opacity: 0;
         }
 
-        /* Virtual Cursor */
         #virtual-cursor {
             position: fixed; width: 20px; height: 20px;
             border: 2px solid var(--accent); border-radius: 50%;
@@ -68,7 +69,6 @@
         }
         #virtual-cursor.clicking { background: var(--accent); transform: translate(-50%, -50%) scale(0.6); }
 
-        /* REAL WEBSITE CONTENT (To test scrolling & clicking) */
         .content-layer { position: relative; z-index: 10; padding: 150px 50px; text-align: center; }
         .glass-card {
             background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(5px);
@@ -85,7 +85,6 @@
         }
         .test-btn:hover { background: var(--accent); color: black; box-shadow: 0 0 20px var(--accent); }
 
-        /* Start Overlay */
         #startOverlay {
             position: fixed; inset: 0; z-index: 99999;
             background: radial-gradient(circle, #0a0a1a, #010103);
@@ -97,8 +96,8 @@
 <body>
 
     <div id="startOverlay">
-        <h1 style="letter-spacing: 15px;">Y.R.S <span style="font-size: 1rem; color: var(--accent);">v5.0</span></h1>
-        <p style="color: #666; margin-bottom: 40px;">SPATIAL COMPUTING ENGINE</p>
+        <h1 style="letter-spacing: 15px;">Y.R.S <span style="font-size: 1rem; color: var(--accent);">v5.1</span></h1>
+        <p style="color: #666; margin-bottom: 40px;">SPATIAL COMPUTING ENGINE (OPTIMIZED)</p>
         <button class="test-btn" id="startBtn" style="font-weight: bold; letter-spacing: 3px;">BOOT SYSTEM</button>
     </div>
 
@@ -114,7 +113,7 @@
         <div class="panel">
             <div class="stat-row"><span>SYS.FPS</span><span class="stat-val" id="ui-fps">0</span></div>
             <div class="stat-row"><span>HANDS</span><span class="stat-val" id="ui-hands">0</span></div>
-            <div class="stat-row"><span>COMMAND</span><span class="stat-val" id="ui-gesture">SCANNING</span></div>
+            <div class="stat-row"><span>COMMAND</span><span class="stat-val warning" id="ui-gesture">WAITING FOR CAM...</span></div>
         </div>
         <div class="panel">
             <div style="font-size: 0.7rem; color: #888; margin-bottom: 5px;">CONTROLS:</div>
@@ -135,29 +134,28 @@
             <p>Welcome to the Spatial Web. Use the Peace Sign (✌️) and move your hand up/down to scroll this page.</p>
         </div>
 
-        <div style="height: 300px;"></div> <div class="glass-card">
+        <div style="height: 300px;"></div>
+
+        <div class="glass-card">
             <h2 style="margin-bottom: 15px;">Air-Click Interface</h2>
             <p style="margin-bottom: 20px;">Move the virtual cursor using your index finger. Pinch your thumb and index together to click the button below.</p>
             <button class="test-btn" id="magicBtn" onclick="alert('Air Click Successful! 🚀 System running flawlessly.')">AIR CLICK ME</button>
         </div>
 
-        <div style="height: 500px;"></div> </div>
+        <div style="height: 500px;"></div>
+    </div>
 
 <script>
-/**
- * Y.R.S ENGINE v5.0 - Spatial DOM Controller
- */
 const videoElement = document.querySelector('.input_video');
 const canvasCtx = document.getElementById('arCanvas').getContext('2d');
 const cursor = document.getElementById('virtual-cursor');
+const uiGesture = document.getElementById('ui-gesture');
 
 let width = window.innerWidth, height = window.innerHeight;
 let frames = 0, lastTs = performance.now();
 let smoothedCursor = { x: width/2, y: height/2 };
-
-// System States
-let clickCooldown = 0;
-let geoLocked = false;
+let clickCooldown = 0, geoLocked = false;
+let aiLoaded = false; 
 
 window.addEventListener('resize', () => {
     width = window.innerWidth; height = window.innerHeight;
@@ -166,15 +164,18 @@ window.addEventListener('resize', () => {
 });
 window.dispatchEvent(new Event('resize'));
 
-// Boot System
 document.getElementById('startBtn').onclick = async () => {
-    document.getElementById('startBtn').innerText = "CONNECTING CAM...";
+    document.getElementById('startBtn').innerText = "CONNECTING...";
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
         videoElement.srcObject = stream;
         document.getElementById('startOverlay').classList.add('hidden');
         document.getElementById('hud').classList.remove('hidden');
         document.getElementById('realContent').classList.remove('hidden');
+        
+        uiGesture.innerText = "DOWNLOADING AI... (Wait 5-10s)";
+        uiGesture.classList.add('warning');
+        
         initMediaPipe();
         requestAnimationFrame(engineLoop);
     } catch (e) {
@@ -182,24 +183,16 @@ document.getElementById('startBtn').onclick = async () => {
     }
 };
 
-// Math Utilities
 const dist = (p1, p2) => Math.hypot(p1.x - p2.x, p1.y - p2.y);
-// Map coordinates and FLIP X-axis because camera is mirrored
 const map = (p) => ({ x: (1 - p.x) * width, y: p.y * height }); 
 
-// Exponential Moving Average (EMA) for smooth cursor (No jittering!)
 function smoothLerp(current, target, factor = 0.3) {
     return current + (target - current) * factor;
 }
 
-// ----------------------------------------------------
-// CORE COMMAND LOGIC (THE MAGIC)
-// ----------------------------------------------------
 function processCommands(hand) {
     const thumb = hand[4], index = hand[8], middle = hand[12], pinky = hand[20], palm = hand[0];
-    const uiGesture = document.getElementById('ui-gesture');
 
-    // 1. VIRTUAL CURSOR TRACKING (Index Finger tip)
     const targetCursor = map(index);
     smoothedCursor.x = smoothLerp(smoothedCursor.x, targetCursor.x, 0.2);
     smoothedCursor.y = smoothLerp(smoothedCursor.y, targetCursor.y, 0.2);
@@ -208,34 +201,29 @@ function processCommands(hand) {
     cursor.style.left = smoothedCursor.x + 'px';
     cursor.style.top = smoothedCursor.y + 'px';
 
-    // 2. AIR CLICK (Thumb + Index pinch)
     if (dist(thumb, index) < 0.05) {
         uiGesture.innerText = "CLICKING";
         cursor.classList.add('clicking');
         
         if (clickCooldown === 0) {
-            // Find what DOM element is under the cursor!
             const elementUnderCursor = document.elementFromPoint(smoothedCursor.x, smoothedCursor.y);
             if (elementUnderCursor && typeof elementUnderCursor.click === 'function') {
-                elementUnderCursor.click(); // Trigger actual HTML click
-                clickCooldown = 30; // Prevent spam clicking (30 frames)
+                elementUnderCursor.click(); 
+                clickCooldown = 30; 
             }
         }
     } else {
         cursor.classList.remove('clicking');
     }
 
-    // 3. JEDI SCROLL (Peace Sign: Index + Middle UP, others DOWN)
     const isPeace = dist(index, palm) > 0.3 && dist(middle, palm) > 0.3 && dist(pinky, palm) < 0.2;
     if (isPeace) {
         uiGesture.innerText = "SCROLLING";
-        // Calculate scroll speed based on Y position of hand
-        const neutralY = 0.5; // middle of camera
-        const scrollSpeed = (hand[0].y - neutralY) * 60; // Multiply for speed
+        const neutralY = 0.5; 
+        const scrollSpeed = (hand[0].y - neutralY) * 60; 
         window.scrollBy(0, scrollSpeed);
     }
 
-    // 4. GEO-SCANNER (Shaka Sign / Call Me: Thumb + Pinky UP, Index + Middle DOWN)
     const isShaka = dist(thumb, palm) > 0.3 && dist(pinky, palm) > 0.3 && dist(index, palm) < 0.2;
     if (isShaka && !geoLocked) {
         uiGesture.innerText = "FETCHING GEO-DATA...";
@@ -247,7 +235,6 @@ function processCommands(hand) {
             navigator.geolocation.getCurrentPosition((position) => {
                 document.getElementById('geo-lat').innerText = position.coords.latitude.toFixed(4);
                 document.getElementById('geo-lon').innerText = position.coords.longitude.toFixed(4);
-                // Hardcoding Raipur for the aesthetic, but coords are real
                 document.getElementById('geo-city').innerText = "LOCATION MATCH: RAIPUR, IN";
             }, () => {
                 document.getElementById('geo-city').innerText = "GPS DENIED BY USER";
@@ -262,11 +249,9 @@ function processCommands(hand) {
     if (clickCooldown > 0) clickCooldown--;
 }
 
-// ----------------------------------------------------
-// RENDER ENGINE
-// ----------------------------------------------------
+let currentHands = [];
+
 function engineLoop(ts) {
-    // FPS Counter
     frames++;
     if (ts > lastTs + 1000) {
         document.getElementById('ui-fps').innerText = frames;
@@ -279,14 +264,11 @@ function engineLoop(ts) {
         document.getElementById('ui-hands').innerText = currentHands.length;
         
         currentHands.forEach((hand) => {
-            // Process DOM interactions
             processCommands(hand);
 
-            // Draw Cybernetic Skeleton
             canvasCtx.globalCompositeOperation = 'screen';
             drawConnectors(canvasCtx, hand, HAND_CONNECTIONS, {color: '#00ffcc', lineWidth: 2});
             
-            // Draw neon joints
             hand.forEach((lm) => {
                 const pt = map(lm);
                 canvasCtx.beginPath();
@@ -300,32 +282,45 @@ function engineLoop(ts) {
         });
     } else {
         document.getElementById('ui-hands').innerText = "0";
-        document.getElementById('ui-gesture').innerText = "SCANNING";
+        if (aiLoaded) {
+            uiGesture.innerText = "SCANNING";
+            uiGesture.classList.remove('warning');
+        }
         cursor.style.opacity = 0;
     }
 
     requestAnimationFrame(engineLoop);
 }
 
-// ----------------------------------------------------
-// MEDIAPIPE INITIALIZATION
-// ----------------------------------------------------
 function initMediaPipe() {
     const hands = new Hands({locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`});
     hands.setOptions({
-        maxNumHands: 1, // Restrict to 1 hand for better DOM control efficiency
-        modelComplexity: 0, // Turbo speed for mobile/tablet
-        minDetectionConfidence: 0.6,
-        minTrackingConfidence: 0.6
+        maxNumHands: 1, 
+        modelComplexity: 0, // Turbo speed
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5
     });
     
-    hands.onResults((res) => { currentHands = res.multiHandLandmarks || []; });
+    hands.onResults((res) => { 
+        if (!aiLoaded) {
+            aiLoaded = true;
+            uiGesture.innerText = "AI READY";
+            uiGesture.classList.remove('warning');
+        }
+        currentHands = res.multiHandLandmarks || []; 
+    });
     
     new Camera(videoElement, {
-        onFrame: async () => { await hands.send({image: videoElement}); },
-        width: 1280, height: 720
+        onFrame: async () => { 
+            try {
+                await hands.send({image: videoElement}); 
+            } catch (e) {}
+        },
+        // IMPORTANT: Lowered resolution so tablets don't choke and lag
+        width: 640, height: 480 
     }).start();
 }
 </script>
 </body>
-</html>
+                                                                                                 </html>
+            
